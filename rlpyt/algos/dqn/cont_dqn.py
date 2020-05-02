@@ -12,12 +12,12 @@ from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.tensor import select_at_indexes, valid_mean
 from rlpyt.algos.utils import valid_from_done
 
-OptInfo = namedtuple("OptInfo", ["loss", "gradNorm", "tdAbsErr","reward", "epsilon"])
+OptInfo = namedtuple("OptInfo", ["loss", "gradNorm", "tdAbsErr", "reward", "epsilon"])
 SamplesToBuffer = namedarraytuple("SamplesToBuffer",
     ["observation", "action", "reward", "done"])
 
 
-class DQN(RlAlgorithm):
+class ContDQN(RlAlgorithm):
     """
     DQN algorithm trainig from a replay buffer, with options for double-dqn, n-step
     returns, and prioritized replay.
@@ -30,7 +30,7 @@ class DQN(RlAlgorithm):
             discount=0.99,
             batch_size=32,
             min_steps_learn=int(5e4),
-            delta_clip=1.,
+            delta_clip=None,
             replay_size=int(1e6),
             replay_ratio=8,  # data_consumption / data_generation.
             target_update_tau=1,
@@ -180,8 +180,7 @@ class DQN(RlAlgorithm):
             self.optimizer.step()
             if self.prioritized_replay:
                 self.replay_buffer.update_batch_priorities(td_abs_errors)
-            # reward = float(samples_from_replay.agent_inputs.prev_reward.mean())
-            reward = float(samples_from_replay.return_.mean())
+            reward = float(samples_from_replay.agent_inputs.prev_reward.mean())
             opt_info.loss.append(loss.item())
             opt_info.gradNorm.append(grad_norm)
             opt_info.tdAbsErr.extend(td_abs_errors[::8].numpy())  # Downsample.
@@ -206,39 +205,47 @@ class DQN(RlAlgorithm):
 
     def loss(self, samples):
         """
-        Computes the Q-learning loss, based on: 0.5 * (Q - target_Q) ^ 2.
-        Implements regular DQN or Double-DQN for computing target_Q values
-        using the agent's target network.  Computes the Huber loss using 
-        ``delta_clip``, or if ``None``, uses MSE.  When using prioritized
-        replay, multiplies losses by importance sample weights.
+         Computes the Q-learning loss, based on: 0.5 * (Q - target_Q) ^ 2.
+         Implements regular DQN or Double-DQN for computing target_Q values
+         using the agent's target network.  Computes the Huber loss using
+         ``delta_clip``, or if ``None``, uses MSE.  When using prioritized
+         replay, multiplies losses by importance sample weights.
 
-        Input ``samples`` have leading batch dimension [B,..] (but not time).
+         Input ``samples`` have leading batch dimension [B,..] (but not time).
 
-        Calls the agent to compute forward pass on training inputs, and calls
-        ``agent.target()`` to compute target values.
+         Calls the agent to compute forward pass on training inputs, and calls
+         ``agent.target()`` to compute target values.
 
-        Returns loss and TD-absolute-errors for use in prioritization.
+         Returns loss and TD-absolute-errors for use in prioritization.
 
-        Warning: 
-            If not using mid_batch_reset, the sampler will only reset environments
-            between iterations, so some samples in the replay buffer will be
-            invalid.  This case is not supported here currently.
-        """
+         Warning:
+             If not using mid_batch_reset, the sampler will only reset environments
+             between iterations, so some samples in the replay buffer will be
+             invalid.  This case is not supported here currently.
+         """
         qs = self.agent(*samples.agent_inputs)
-        q = select_at_indexes(samples.action, qs)
+        # q = select_at_indexes(samples.action, qs)
+        q = qs
         with torch.no_grad():
             target_qs = self.agent.target(*samples.target_inputs)
             if self.double_dqn:
                 next_qs = self.agent(*samples.target_inputs)
-                next_a = torch.argmax(next_qs, dim=-1)
-                target_q = select_at_indexes(next_a, target_qs)
+                # next_a = torch.argmax(next_qs, dim=-1)
+                next_a = next_qs
+                # target_q = select_at_indexes(next_a, target_qs)
+                target_q = next_qs
             else:
-                target_q = torch.max(target_qs, dim=-1).values
+                # target_q = torch.max(target_qs, dim=-1).values
+                target_q = target_qs
         disc_target_q = (self.discount ** self.n_step_return) * target_q
         y = samples.return_ + (1 - samples.done_n.float()) * disc_target_q
         delta = y - q
-        losses = 0.5 * delta ** 2
+        # losses = 0.5 * delta ** 2
+        losses = delta #we are doing regression not classification
+        # loss = torch.mean(losses)
+        loss = abs(samples.action[torch.argmax(samples.return_)] - qs.mean())
         abs_delta = abs(delta)
+
         if self.delta_clip is not None:  # Huber loss.
             b = self.delta_clip * (abs_delta - self.delta_clip / 2)
             losses = torch.where(abs_delta <= self.delta_clip, losses, b)
@@ -255,8 +262,8 @@ class DQN(RlAlgorithm):
             # valid = valid_from_done(samples.done)
             # loss = valid_mean(losses, valid)
             # td_abs_errors *= valid
-        else:
-            loss = torch.mean(losses)
+        # else:
+        #     loss = torch.mean(losses)
 
         return loss, td_abs_errors
 

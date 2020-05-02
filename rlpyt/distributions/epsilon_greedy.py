@@ -17,7 +17,8 @@ class EpsilonGreedy(DiscreteMixin, Distribution):
         B will apply across the Batch dimension (same epsilon for all T)."""
         arg_select = torch.argmax(q, dim=-1)
         mask = torch.rand(arg_select.shape) < self._epsilon
-        arg_rand = torch.randint(low=0, high=q.shape[-1], size=(mask.sum(),))
+        arg_rand = torch.randint(low=0, high=q.shape[-1] or 1, size=(mask.sum(),))
+        # arg_rand = torch.randint(low=0, high=1, size=(mask.sum(),))
         arg_select[mask] = arg_rand
         return arg_select
 
@@ -42,7 +43,9 @@ class CategoricalEpsilonGreedy(EpsilonGreedy):
         """Input p to be shaped [T,B,A,P] or [B,A,P], A: number of actions, P:
         number of atoms.  Optional input z is domain of atom-values, shaped
         [P].  Vector epsilon of lenght B will apply across Batch dimension."""
-        q = torch.tensordot(p, z or self.z, dims=1)
+        #changed for DST
+        # q = torch.tensordot(p, z or self.z, dims=1)
+        q = torch.tensordot(p, z or self.z, dims=-1)
         return super().sample(q)
 
     def set_z(self, z):
