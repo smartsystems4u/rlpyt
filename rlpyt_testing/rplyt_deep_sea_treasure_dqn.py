@@ -13,7 +13,7 @@ from collections import namedtuple
 def f(*args, **kwargs):
     return GymEnvWrapper(DeepSeaTreasureEnv())
 
-def build_and_train():
+def build_and_train(run_nr = 0):
     sample = SerialSampler(
         EnvCls=f,
         env_kwargs={},
@@ -46,8 +46,16 @@ def build_and_train():
     config = {}
     name = "deep_sea_treasure_dqn: " + DeepSeaTreasureEnv.__class__.__name__
     log_dir = "deep_sea_treasure_env"
-    with logger_context(log_dir, 12, name, config, snapshot_mode='last', use_summary_writer=True):
+    with logger_context(log_dir, run_nr, name, config, snapshot_mode='last', use_summary_writer=True):
         runner.train()
 
 if __name__ == "__main__":
-    build_and_train()
+    import argparse
+
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--run', help='run number (for logging)', type=int, default=0)
+    args = parser.parse_args()
+
+    build_and_train(
+        run_nr= args.run
+    )
