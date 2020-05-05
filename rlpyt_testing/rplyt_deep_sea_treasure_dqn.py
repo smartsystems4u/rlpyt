@@ -1,4 +1,5 @@
 from rlpyt.samplers.serial.sampler import SerialSampler
+from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
 from rlpyt.envs.gym import GymEnvWrapper
 from rlpyt.agents.dqn.catmlpdqn_agent import CatMlpDqnAgent
 from rlpyt.agents.dqn.catdqn_agent import CatDqnAgent
@@ -13,8 +14,9 @@ from collections import namedtuple
 def f(*args, **kwargs):
     return GymEnvWrapper(DeepSeaTreasureEnv())
 
-def build_and_train(run_nr = 0):
-    sample = SerialSampler(
+def build_and_train(run_nr = 0, cuda_idx=0, cpu_workers=3):
+    affinity = dict(cuda_idx=cuda_idx, workers_cpus=list(range(cpu_workers)))
+    sample = GpuSampler(
         EnvCls=f,
         env_kwargs={},
         batch_T=100,
@@ -29,7 +31,8 @@ def build_and_train(run_nr = 0):
                batch_size=1000,
                delta_clip=None,
                n_step_return=1,
-               eps_steps=35e5
+               eps_steps=35e5,
+
                ) #run with defaults
     spaces = namedtuple('spaces', ['actionspace', 'observationspace'])
     agent = DqnAgent(ModelCls=CatMlpModel,
@@ -41,7 +44,8 @@ def build_and_train(run_nr = 0):
         agent= agent,
         sampler = sample,
         n_steps = 40e5,
-        log_interval_steps = 10e3
+        log_interval_steps = 10e3,
+        affinity=affinity
     )
     config = {}
     name = "deep_sea_treasure_dqn: " + DeepSeaTreasureEnv.__class__.__name__
@@ -51,6 +55,8 @@ def build_and_train(run_nr = 0):
 
 if __name__ == "__main__":
     import argparse
+
+
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--run', help='run number (for logging)', type=int, default=0)
