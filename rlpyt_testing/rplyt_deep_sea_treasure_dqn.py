@@ -17,8 +17,8 @@ def build_and_train(run_nr = 0):
     sample = SerialSampler(
         EnvCls=f,
         env_kwargs={},
-        batch_T=100,
-        batch_B=1,
+        batch_T=1000,
+        batch_B=10,
         max_decorrelation_steps=0,
         eval_n_envs=10,
         eval_max_steps=10e3,
@@ -29,18 +29,18 @@ def build_and_train(run_nr = 0):
                batch_size=1000,
                delta_clip=None,
                n_step_return=1,
-               eps_steps=35e5
+               eps_steps=35e6
                ) #run with defaults
     spaces = namedtuple('spaces', ['actionspace', 'observationspace'])
     agent = DqnAgent(ModelCls=CatMlpModel,
                         model_kwargs = {'input_size':3,
-                                        'hidden_sizes': 5,
+                                        'hidden_sizes': 20,
                                         "output_size": 4})
     runner = MinibatchRlEval(
         algo = algo,
         agent= agent,
         sampler = sample,
-        n_steps = 40e5,
+        n_steps = 40e6,
         log_interval_steps = 10e3
     )
     config = {}
