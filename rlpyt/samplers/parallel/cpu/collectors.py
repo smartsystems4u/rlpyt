@@ -37,6 +37,9 @@ class CpuResetCollector(DecorrelatingStartCollector):
             # Agent inputs and outputs are torch tensors.
             act_pyt, agent_info = self.agent.step(obs_pyt, act_pyt, rew_pyt)
             action = numpify_buffer(act_pyt)
+            #WvD: Bug in single output case
+            if action.size == 1:
+                action = np.ndarray(shape=(1,1), buffer=action, dtype=action.dtype)
             for b, env in enumerate(self.envs):
                 # Environment inputs and outputs are numpy arrays.
                 o, r, d, env_info = env.step(action[b])
