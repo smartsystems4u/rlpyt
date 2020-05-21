@@ -11,7 +11,11 @@ class DeepSeaTreasureEnv(gym.Env):
         time as possible. There is no one optimal policy to solve this but a collection of policies which are
         equally optimal.
     '''
-    def __init__(self):
+    def __init__(self, max_steps=50):
+
+        #limit on time spent seeking treasure
+        self.max_steps = max_steps
+
         #Grid world
         # values:
         #  -- 0     = sea
@@ -73,6 +77,7 @@ class DeepSeaTreasureEnv(gym.Env):
             if col < 9:
                 col += 1
 
+        #account for time spent (even doing illegal moves)
         if self.grid[col, row] == -1:
             self.time_spent += 1
             return
@@ -114,9 +119,11 @@ class DeepSeaTreasureEnv(gym.Env):
 
         obs = np.array([self.position, self.time_spent, self.treasure_value])
         # Linear scalarized reward with scalars set to 1
+        if self.time_spent == self.max_steps:
+            reward -= self.time_spent
         if self.treasure_value > 0: #only return reward at the end of the hunt
             reward = self.treasure_value #- self.time_spent
 
-        done = self.treasure_value > 0
+        done = (self.treasure_value > 0) or (self.time_spent == self.max_steps)
 
         return obs, reward, done, info
