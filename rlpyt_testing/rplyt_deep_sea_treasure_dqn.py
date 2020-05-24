@@ -1,4 +1,5 @@
 from rlpyt.samplers.serial.sampler import SerialSampler
+from rlpyt.samplers.parallel.cpu.sampler import CpuSampler
 from rlpyt.envs.gym import GymEnvWrapper
 from rlpyt.agents.dqn.catmlpdqn_agent import CatMlpDqnAgent
 from rlpyt.agents.dqn.catdqn_agent import CatDqnAgent
@@ -17,7 +18,7 @@ def build_and_train(run_nr = 0):
     sample = SerialSampler(
         EnvCls=f,
         env_kwargs={},
-        batch_T=1000,
+        batch_T=50,
         batch_B=10,
         max_decorrelation_steps=0,
         eval_n_envs=10,
@@ -26,7 +27,7 @@ def build_and_train(run_nr = 0):
         eval_env_kwargs={}
     )
     algo = DQN(min_steps_learn=10e3,
-               batch_size=1000,
+               batch_size=10,
                delta_clip=None,
                n_step_return=1,
                eps_steps=35e6
