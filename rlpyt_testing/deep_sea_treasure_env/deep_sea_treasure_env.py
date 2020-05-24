@@ -91,7 +91,7 @@ class DeepSeaTreasureEnv(gym.Env):
         return
 
     def reset(self):
-        self.position = 0
+        self.position = 9
         self.time_spent = 0
         self.treasure_value = 0
         obs = np.array([self.position, self.time_spent, self.treasure_value])
@@ -111,7 +111,7 @@ class DeepSeaTreasureEnv(gym.Env):
             info (dict): contains auxiliary diagnostic information (helpful for debugging, and sometimes learning)
         """
         obs = np.zeros(1, dtype=int)
-        reward = 0
+        reward = -1
         done = False
         info = {}
 
@@ -119,11 +119,15 @@ class DeepSeaTreasureEnv(gym.Env):
 
         obs = np.array([self.position, self.time_spent, self.treasure_value])
         # Linear scalarized reward with scalars set to 1
-        if self.time_spent == self.max_steps:
-            reward -= self.time_spent
-        if self.treasure_value > 0: #only return reward at the end of the hunt
-            reward = self.treasure_value #- self.time_spent
+        # if self.time_spent == self.max_steps:
+        #     reward -= self.time_spent
 
-        done = (self.treasure_value > 0) or (self.time_spent == self.max_steps)
+        #return reward after max steps or when treasure found
+        if (self.treasure_value > 0) or (self.time_spent == self.max_steps):
+            reward = self.treasure_value - self.time_spent
+            done = True
+
+        # reward = -self.time_spent + self.treasure_value
+        # done = (self.treasure_value > 0) or (self.time_spent == self.max_steps)
 
         return obs, reward, done, info
